@@ -24,9 +24,16 @@ export async function getSayingList(): Promise<string[]> {
         });
         const response = await s3Client.send(command);
         const body = await new Response(response.Body as ReadableStream).text();
-        return JSON.parse(body);
+
+        // Check if the body is valid JSON, otherwise return an empty array
+        try {
+            return JSON.parse(body);
+        } catch (error) {
+            console.warn(`Invalid JSON data in S3, returning empty array: ${error}`);
+            return [];
+        }
     } catch (error) {
-        console.error("Error fetching data from S3:", error);
+        console.error(`Error fetching data from S3: ${error}`);
         return [];
     }
 }
