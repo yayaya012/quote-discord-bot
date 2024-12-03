@@ -9,8 +9,6 @@ import {
     InteractionResponseTypes,
     ApplicationCommandOptionTypes,
 } from "@discordeno/mod.ts";
-
-import "$std/dotenv/load.ts";
 import { addSaying } from "./sayingManager.ts";
 
 interface SlashCommand {
@@ -18,12 +16,10 @@ interface SlashCommand {
     response(bot: Bot, interaction: Interaction): Promise<void>;
 }
 
-// Botのトークンを環境変数から取得
 const botToken: string = Deno.env.get("BOT_TOKEN")!;
 const botId = getBotIdFromToken(botToken);
 
 const addCommand: SlashCommand = {
-    // コマンド情報
     info: {
         name: "add_saying",
         description: "名言を追加します",
@@ -36,13 +32,11 @@ const addCommand: SlashCommand = {
             },
         ],
     },
-    // コマンド内容
     response: async (bot, interaction) => {
-        // ユーザーが入力した名言を取得
         const saying = interaction.data?.options?.find((option) => option.name === "saying")?.value;
 
         if (saying) {
-            await addSaying(saying.toString()); // 名言をリストに追加
+            await addSaying(saying.toString());
             return await bot.helpers.sendInteractionResponse(interaction.id, interaction.token, {
                 type: InteractionResponseTypes.ChannelMessageWithSource,
                 data: {
@@ -56,7 +50,7 @@ const addCommand: SlashCommand = {
             type: InteractionResponseTypes.ChannelMessageWithSource,
             data: {
                 content: "名言が指定されていません。",
-                flags: 1 << 6, // エフェメラルメッセージ（ユーザー本人にのみ表示）
+                flags: 1 << 6,
             },
         });
     },
