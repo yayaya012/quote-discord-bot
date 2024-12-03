@@ -22,12 +22,27 @@ export async function getSayingList(): Promise<{ length: number; saying: string[
             Bucket: BUCKET_NAME,
             Key: FILE_KEY,
         });
-        const response = await s3Client.send(command);
-        const body = await new Response(response.Body as ReadableStream).text();
 
-        console.log("Fetched data from S3:", body);
+        const response = await s3Client.send(command);
+        const stream = response.Body as ReadableStream;
+
+        // 文字列として読み取るために、TextDecoderを使う
+        const reader = stream.getReader();
+        const decoder = new TextDecoder();
+        let result = "";
+        let done = false;
+
+        // ストリームを読み取ってテキストに変換
+        while (!done) {
+            const { value, done: doneReading } = await reader.read();
+            done = doneReading;
+            result += decoder.decode(value, { stream: true });
+        }
+
+        console.log("Fetched data from S3:", result);
+
         try {
-            const parsedData = JSON.parse(body);
+            const parsedData = JSON.parse(result);
             return parsedData;
         } catch (error) {
             console.warn(`Invalid JSON data in S3, returning default format: ${error}`);
