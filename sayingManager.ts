@@ -2,6 +2,7 @@ import { S3Client, GetObjectCommand, PutObjectCommand } from "npm:@aws-sdk/clien
 
 // 環境変数のロード
 import "$std/dotenv/load.ts";
+import { Buffer } from "node:buffer";
 
 // S3クライアントの設定
 const s3Client = new S3Client({
@@ -24,25 +25,22 @@ export async function getSayingList(): Promise<{ length: number; saying: string[
         });
 
         const response = await s3Client.send(command);
-        const stream = response.Body as ReadableStream;
 
-        // 文字列として読み取るために、TextDecoderを使う
-        const reader = stream.getReader();
-        const decoder = new TextDecoder();
-        let result = "";
-        let done = false;
+        // response.BodyはReadableStreamとして返される
+        const stream = response.Body as ReadableStream<Uint8Array>;
 
-        // ストリームを読み取ってテキストに変換
-        while (!done) {
-            const { value, done: doneReading } = await reader.read();
-            done = doneReading;
-            result += decoder.decode(value, { stream: true });
-        }
+        // ストリームをBufferに変換するために、ストリームを読み取る
+        const buffer = await streamToBuffer(stream);
+
+        // Bufferを文字列に変換
+        const result = buffer.toString("utf-8");
 
         console.log("Fetched data from S3:", result);
 
         try {
+            // 文字列をJSONとして解析
             const parsedData = JSON.parse(result);
+            console.log("Parsed data:", JSON.stringify(parsedData, null, 2));
             return parsedData;
         } catch (error) {
             console.warn(`Invalid JSON data in S3, returning default format: ${error}`);
@@ -52,6 +50,23 @@ export async function getSayingList(): Promise<{ length: number; saying: string[
         console.error(`Error fetching data from S3: ${error}`);
         return { length: 0, saying: [] };
     }
+}
+
+// ReadableStreamをBufferに変換するユーティリティ関数
+async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Buffer> {
+    const reader = stream.getReader();
+    const chunks: Uint8Array[] = [];
+    let done = false;
+
+    while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        if (value) {
+            chunks.push(value);
+        }
+    }
+
+    return Buffer.concat(chunks);
 }
 
 // 新しいsayingをS3に追加する関数
