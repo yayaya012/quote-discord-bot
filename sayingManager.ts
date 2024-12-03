@@ -25,6 +25,7 @@ export async function getSayingList(): Promise<{ length: number; saying: string[
         const response = await s3Client.send(command);
         const body = await new Response(response.Body as ReadableStream).text();
 
+        console.log("Fetched data from S3:", body);
         try {
             const parsedData = JSON.parse(body);
             return parsedData;
