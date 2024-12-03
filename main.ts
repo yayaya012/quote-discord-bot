@@ -18,8 +18,9 @@ interface SlashCommand {
     response(bot: Bot, interaction: Interaction): Promise<void>;
 }
 
-// Botのトークンを.envから取得
+// Botのトークンを環境変数から取得
 const botToken: string = Deno.env.get("BOT_TOKEN")!;
+const botId = getBotIdFromToken(botToken);
 
 const addCommand: SlashCommand = {
     // コマンド情報
@@ -64,7 +65,7 @@ const addCommand: SlashCommand = {
 // ボットの作成
 const bot = createBot({
     token: botToken,
-    botId: getBotIdFromToken(botToken) as bigint,
+    botId: botId as bigint,
     intents: Intents.Guilds | Intents.GuildMessages,
     events: {
         ready: (_bot, payload) => {
