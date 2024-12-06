@@ -95,7 +95,6 @@ bot.helpers.createGlobalApplicationCommand(addCommand.info);
 bot.helpers.createGlobalApplicationCommand(registeredCountCommand.info);
 
 // コマンドの登録
-bot.helpers.upsertGlobalApplicationCommands([addCommand.info]);
-bot.helpers.upsertGlobalApplicationCommands([registeredCountCommand.info]);
+bot.helpers.upsertGlobalApplicationCommands([addCommand.info, registeredCountCommand.info]);
 
 await startBot(bot);
