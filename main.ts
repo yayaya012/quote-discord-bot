@@ -84,8 +84,19 @@ const bot = createBot({
             console.log(`${payload.user.username} is ready!`);
         },
         interactionCreate: async (_bot, interaction) => {
-            await addCommand.response(bot, interaction);
-            await registeredCountCommand.response(bot, interaction);
+            if (!interaction.data?.name) return;
+
+            switch (interaction.data.name) {
+                case addCommand.info.name:
+                    await addCommand.response(bot, interaction);
+                    break;
+                case registeredCountCommand.info.name:
+                    await registeredCountCommand.response(bot, interaction);
+                    break;
+                default:
+                    console.log(`Unknown command: ${interaction.data.name}`);
+                    break;
+            }
         },
     },
 });
