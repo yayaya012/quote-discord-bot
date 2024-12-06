@@ -17,6 +17,7 @@ interface SlashCommand {
 }
 
 const botToken: string = Deno.env.get("BOT_TOKEN")!;
+const channelId: string = Deno.env.get("CHANNEL_ID")!;
 const botId = getBotIdFromToken(botToken);
 
 const addCommand: SlashCommand = {
@@ -112,4 +113,14 @@ await startBot(bot);
 
 Deno.cron("Continuous Request", "*/2 * * * *", () => {
     console.log("running...");
+});
+
+Deno.cron("send saying schedule", "0 12 * * *", async () => {
+    const sayingList = await downloadJson();
+    if (!sayingList) {
+        return undefined;
+    }
+
+    const random = Math.floor(Math.random() * (sayingList.length - 0));
+    bot.helpers.sendMessage(channelId, { content: sayingList.saying[random] });
 });
