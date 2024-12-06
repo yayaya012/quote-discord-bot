@@ -109,3 +109,7 @@ bot.helpers.createGlobalApplicationCommand(registeredCountCommand.info);
 bot.helpers.upsertGlobalApplicationCommands([addCommand.info, registeredCountCommand.info]);
 
 await startBot(bot);
+
+Deno.cron("Continuous Request", "*/2 * * * *", () => {
+    console.log("running...");
+});
