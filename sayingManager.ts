@@ -18,42 +18,39 @@ interface SayingList {
     saying: string[];
 }
 
-async function streamToString(stream: ReadableStream<Uint8Array> | null): Promise<string> {
-    if (!stream) {
-        throw new Error("Stream is null");
-    }
-    const reader = stream.getReader();
-    const decoder = new TextDecoder();
-    let result = "";
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        result += decoder.decode(value, { stream: true });
-    }
-    result += decoder.decode(); // End of the stream
-    return result;
-}
-
-export async function downloadJson(): Promise<SayingList> {
-    const command = new GetObjectCommand({ Bucket: BUCKET_NAME, Key: FILE_KEY });
-    const response = await s3Client.send(command);
-    const body = await streamToString(response.Body as ReadableStream<Uint8Array>);
-    console.log("body", body);
-    const parsedData: SayingList = JSON.parse(body);
-    console.log("parsedData", parsedData);
-    return parsedData;
-}
+// function bufferToString(buffer: Uint8Array): string {
+//     const decoder = new TextDecoder("utf-8");
+//     return decoder.decode(buffer);
+// }
 
 // export async function downloadJson(): Promise<SayingList> {
 //     const command = new GetObjectCommand({ Bucket: BUCKET_NAME, Key: FILE_KEY });
 //     const response = await s3Client.send(command);
-//     const body = await new Response(response.Body).text();
-//     console.log("body", body);
-//     const parsedData: SayingList = JSON.parse(body);
+//     const body = await response.Body?.arrayBuffer(); // Convert stream to arrayBuffer
+//     const text = bufferToString(new Uint8Array(body)); // Convert arrayBuffer to string
+//     console.log("body", text);
+//     const parsedData: SayingList = JSON.parse(text);
 //     console.log("parsedData", parsedData);
-
 //     return parsedData;
 // }
+
+export async function downloadJson(): Promise<SayingList> {
+    const command = new GetObjectCommand({ Bucket: BUCKET_NAME, Key: FILE_KEY });
+    const response = await s3Client.send(command);
+    const text = await new Response(response.Body).text();
+    const json = await new Response(response.Body).json();
+    const arrayBuffer = await new Response(response.Body).arrayBuffer();
+    const body = await new Response(response.Body).body;
+    const blob = await new Response(response.Body).blob();
+    console.log("json", json);
+    console.log("arrayBuffer", arrayBuffer);
+    console.log("body", body);
+    console.log("blob", blob);
+    const parsedData: SayingList = JSON.parse(text);
+    console.log("parsedData", parsedData);
+
+    return parsedData;
+}
 
 function modifyJson(data: SayingList, newSaying: string): SayingList {
     data.saying.push(newSaying);
