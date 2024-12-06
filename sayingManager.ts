@@ -1,4 +1,4 @@
-import { S3Client, GetObjectCommand, PutObjectCommand } from "npm:@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand, PutObjectCommand } from "npm:@aws-sdk/client-s3@3.616.0";
 import "$std/dotenv/load.ts";
 
 // S3クライアントの設定
@@ -18,64 +18,20 @@ interface SayingList {
     saying: string[];
 }
 
-// export async function downloadJson(): Promise<SayingList> {
-//     const command = new GetObjectCommand({ Bucket: BUCKET_NAME, Key: FILE_KEY });
-//     const response = await s3Client.send(command);
-//     const body = await new Response(response.Body).text();
-//     console.log("body", body);
-//     const parsedData: SayingList = JSON.parse(body);
-//     console.log("parsedData", parsedData);
-//     return parsedData;
-// }
-
-async function streamToString(stream: ReadableStream<Uint8Array>): Promise<string> {
-    const reader = stream.getReader();
-    const decoder = new TextDecoder();
-    let result = "";
-    let done = false;
-
-    while (!done) {
-        const { value, done: readerDone } = await reader.read();
-        done = readerDone;
-        if (value) {
-            result += decoder.decode(value, { stream: true });
-        }
-    }
-
-    result += decoder.decode(); // flush the decoder
-    return result;
-}
-
 export async function downloadJson(): Promise<SayingList> {
     const command = new GetObjectCommand({ Bucket: BUCKET_NAME, Key: FILE_KEY });
     const response = await s3Client.send(command);
-
-    if (!response.Body) {
-        throw new Error("No response body");
-    }
-
-    const body = await streamToString(response.Body as ReadableStream<Uint8Array>);
+    const body = await new Response(response.Body).text();
     console.log("body", body);
+    const parsedData: SayingList = JSON.parse(body);
+    console.log("parsedData", parsedData);
 
-    try {
-        const parsedData: SayingList = JSON.parse(body);
-        console.log("parsedData", parsedData);
-        return parsedData;
-    } catch (error) {
-        console.error("Failed to parse JSON", error);
-        throw error;
-    }
+    console.log("BOT_TOKEN", Deno.env.get("BOT_TOKEN"));
+    console.log("AWS_ACCESS_KEY_ID", Deno.env.get("AWS_ACCESS_KEY_ID"));
+    console.log("AWS_SECRET_ACCESS_KEY", Deno.env.get("AWS_SECRET_ACCESS_KEY"));
+    console.log("BUCKET_NAME", Deno.env.get("BUCKET_NAME"));
+    return parsedData;
 }
-
-// Example usage
-(async () => {
-    try {
-        const data = await downloadJson();
-        console.log("Downloaded JSON data:", data);
-    } catch (error) {
-        console.error("Error downloading JSON:", error);
-    }
-})();
 
 function modifyJson(data: SayingList, newSaying: string): SayingList {
     data.saying.push(newSaying);
