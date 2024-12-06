@@ -56,9 +56,9 @@ const addCommand: SlashCommand = {
     },
 };
 
-const isSayingListCommand: SlashCommand = {
+const registeredCountCommand: SlashCommand = {
     info: {
-        name: "is_saying_list",
+        name: "registered_count",
         description: "登録済みの名言の数を応答します",
     },
     response: async (bot, interaction) => {
@@ -85,17 +85,17 @@ const bot = createBot({
         },
         interactionCreate: async (_bot, interaction) => {
             await addCommand.response(bot, interaction);
-            await isSayingListCommand.response(bot, interaction);
+            await registeredCountCommand.response(bot, interaction);
         },
     },
 });
 
 // コマンドの作成
 bot.helpers.createGlobalApplicationCommand(addCommand.info);
-bot.helpers.createGlobalApplicationCommand(isSayingListCommand.info);
+bot.helpers.createGlobalApplicationCommand(registeredCountCommand.info);
 
 // コマンドの登録
 bot.helpers.upsertGlobalApplicationCommands([addCommand.info]);
-bot.helpers.upsertGlobalApplicationCommands([isSayingListCommand.info]);
+bot.helpers.upsertGlobalApplicationCommands([registeredCountCommand.info]);
 
 await startBot(bot);
