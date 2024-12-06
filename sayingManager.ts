@@ -18,36 +18,14 @@ interface SayingList {
     saying: string[];
 }
 
-// function bufferToString(buffer: Uint8Array): string {
-//     const decoder = new TextDecoder("utf-8");
-//     return decoder.decode(buffer);
-// }
-
-// export async function downloadJson(): Promise<SayingList> {
-//     const command = new GetObjectCommand({ Bucket: BUCKET_NAME, Key: FILE_KEY });
-//     const response = await s3Client.send(command);
-//     const body = await response.Body?.arrayBuffer(); // Convert stream to arrayBuffer
-//     const text = bufferToString(new Uint8Array(body)); // Convert arrayBuffer to string
-//     console.log("body", text);
-//     const parsedData: SayingList = JSON.parse(text);
-//     console.log("parsedData", parsedData);
-//     return parsedData;
-// }
-
 export async function downloadJson(): Promise<SayingList | undefined> {
     const command = new GetObjectCommand({ Bucket: BUCKET_NAME, Key: FILE_KEY });
     const response = await s3Client.send(command);
-    // const body = await new Response(response.Body).text();
-    // const body = await new Response(response.Body).text();
-    // const bodyStrings = (await data.Body.transformToString("utf-8")).split("\n");
     const bodyStrings = (await response.Body?.transformToString("utf-8"))?.split("\n");
-    // console.log("body", body);
-
     if (!bodyStrings) {
         return undefined;
     }
     const parsedData: SayingList = JSON.parse(bodyStrings[0]);
-    console.log("parsedData", parsedData);
 
     return parsedData;
 }

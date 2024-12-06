@@ -9,7 +9,7 @@ import {
     InteractionResponseTypes,
     ApplicationCommandOptionTypes,
 } from "@discordeno/mod.ts";
-import { addSaying } from "./sayingManager.ts";
+import { addSaying, downloadJson } from "./sayingManager.ts";
 
 interface SlashCommand {
     info: CreateSlashApplicationCommand;
@@ -40,7 +40,7 @@ const addCommand: SlashCommand = {
             return await bot.helpers.sendInteractionResponse(interaction.id, interaction.token, {
                 type: InteractionResponseTypes.ChannelMessageWithSource,
                 data: {
-                    content: `新しい名言が追加されました: "${saying}"`,
+                    content: `新しい名言が追加されました: ${saying}`,
                     flags: 1 << 6,
                 },
             });
@@ -50,6 +50,24 @@ const addCommand: SlashCommand = {
             type: InteractionResponseTypes.ChannelMessageWithSource,
             data: {
                 content: "名言が指定されていません。",
+                flags: 1 << 6,
+            },
+        });
+    },
+};
+
+const isSayingListCommand: SlashCommand = {
+    info: {
+        name: "is_saying_list",
+        description: "登録済みの名言の数を応答します",
+    },
+    response: async (bot, interaction) => {
+        const sayingList = await downloadJson();
+
+        return await bot.helpers.sendInteractionResponse(interaction.id, interaction.token, {
+            type: InteractionResponseTypes.ChannelMessageWithSource,
+            data: {
+                content: sayingList ? `${sayingList.length}件の名言が登録されています` : "名言が登録されていません",
                 flags: 1 << 6,
             },
         });
@@ -67,14 +85,17 @@ const bot = createBot({
         },
         interactionCreate: async (_bot, interaction) => {
             await addCommand.response(bot, interaction);
+            await isSayingListCommand.response(bot, interaction);
         },
     },
 });
 
 // コマンドの作成
 bot.helpers.createGlobalApplicationCommand(addCommand.info);
+bot.helpers.createGlobalApplicationCommand(isSayingListCommand.info);
 
 // コマンドの登録
 bot.helpers.upsertGlobalApplicationCommands([addCommand.info]);
+bot.helpers.upsertGlobalApplicationCommands([isSayingListCommand.info]);
 
 await startBot(bot);
