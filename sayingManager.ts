@@ -34,19 +34,19 @@ interface SayingList {
 //     return parsedData;
 // }
 
-export async function downloadJson(): Promise<SayingList> {
+export async function downloadJson(): Promise<SayingList | undefined> {
     const command = new GetObjectCommand({ Bucket: BUCKET_NAME, Key: FILE_KEY });
     const response = await s3Client.send(command);
-    const text = await new Response(response.Body).text();
-    const json = await new Response(response.Body).json();
-    const arrayBuffer = await new Response(response.Body).arrayBuffer();
-    const body = await new Response(response.Body).body;
-    const blob = await new Response(response.Body).blob();
-    console.log("json", json);
-    console.log("arrayBuffer", arrayBuffer);
-    console.log("body", body);
-    console.log("blob", blob);
-    const parsedData: SayingList = JSON.parse(text);
+    // const body = await new Response(response.Body).text();
+    // const body = await new Response(response.Body).text();
+    // const bodyStrings = (await data.Body.transformToString("utf-8")).split("\n");
+    const bodyStrings = (await response.Body?.transformToString("utf-8"))?.split("\n");
+    // console.log("body", body);
+
+    if (!bodyStrings) {
+        return undefined;
+    }
+    const parsedData: SayingList = JSON.parse(bodyStrings[0]);
     console.log("parsedData", parsedData);
 
     return parsedData;
@@ -70,6 +70,10 @@ async function uploadJson(data: SayingList): Promise<void> {
 
 export async function addSaying(saying: string): Promise<void> {
     const sayingList = await downloadJson();
+    if (!sayingList) {
+        return;
+    }
+
     const newSayingList = modifyJson(sayingList, saying);
     uploadJson(newSayingList);
 }
