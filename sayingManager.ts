@@ -18,22 +18,42 @@ interface SayingList {
     saying: string[];
 }
 
+async function streamToString(stream: ReadableStream<Uint8Array> | null): Promise<string> {
+    if (!stream) {
+        throw new Error("Stream is null");
+    }
+    const reader = stream.getReader();
+    const decoder = new TextDecoder();
+    let result = "";
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        result += decoder.decode(value, { stream: true });
+    }
+    result += decoder.decode(); // End of the stream
+    return result;
+}
+
 export async function downloadJson(): Promise<SayingList> {
     const command = new GetObjectCommand({ Bucket: BUCKET_NAME, Key: FILE_KEY });
-
-    console.log("BOT_TOKEN", Deno.env.get("BOT_TOKEN"));
-    console.log("AWS_ACCESS_KEY_ID", Deno.env.get("AWS_ACCESS_KEY_ID"));
-    console.log("AWS_SECRET_ACCESS_KEY", Deno.env.get("AWS_SECRET_ACCESS_KEY"));
-    console.log("BUCKET_NAME", Deno.env.get("BUCKET_NAME"));
-
     const response = await s3Client.send(command);
-    const body = await new Response(response.Body).text();
+    const body = await streamToString(response.Body as ReadableStream<Uint8Array>);
     console.log("body", body);
     const parsedData: SayingList = JSON.parse(body);
     console.log("parsedData", parsedData);
-
     return parsedData;
 }
+
+// export async function downloadJson(): Promise<SayingList> {
+//     const command = new GetObjectCommand({ Bucket: BUCKET_NAME, Key: FILE_KEY });
+//     const response = await s3Client.send(command);
+//     const body = await new Response(response.Body).text();
+//     console.log("body", body);
+//     const parsedData: SayingList = JSON.parse(body);
+//     console.log("parsedData", parsedData);
+
+//     return parsedData;
+// }
 
 function modifyJson(data: SayingList, newSaying: string): SayingList {
     data.saying.push(newSaying);
