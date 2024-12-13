@@ -115,7 +115,7 @@ Deno.cron("Continuous Request", "*/2 * * * *", () => {
     console.log("running...");
 });
 
-Deno.cron("send saying schedule", "0 3 * * 1,3,5,7", async () => {
+Deno.cron("send saying schedule", "0 3 * * SUN,MON,WED,FRI", async () => {
     const sayingList = await downloadJson();
     if (!sayingList) {
         return undefined;
