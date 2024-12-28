@@ -37,6 +37,7 @@ function modifyJson(data: SayingList, newSaying: string): SayingList {
 }
 
 async function uploadJson(data: SayingList): Promise<void> {
+    console.log("uploadJson called");
     const command = new PutObjectCommand({
         Bucket: BUCKET_NAME,
         Key: FILE_KEY,
@@ -44,6 +45,7 @@ async function uploadJson(data: SayingList): Promise<void> {
         ContentType: "application/json",
     });
 
+    console.log("before s3Client.send()");
     const result = await s3Client.send(command);
     console.log("PutObject response:", result);
 }
@@ -53,8 +55,8 @@ export async function addSaying(saying: string): Promise<void> {
     if (!sayingList) {
         return;
     }
-
     console.log("sayingList", sayingList);
+
     try {
         const newSayingList = modifyJson(sayingList, saying);
         await uploadJson(newSayingList);
