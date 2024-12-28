@@ -35,6 +35,7 @@ const addCommand: SlashCommand = {
     },
     response: async (bot, interaction) => {
         const saying = interaction.data?.options?.find((option) => option.name === "saying")?.value;
+        console.log("saying", saying);
 
         if (saying) {
             await addSaying(saying.toString());

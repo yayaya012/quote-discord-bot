@@ -48,10 +48,12 @@ async function uploadJson(data: SayingList): Promise<void> {
 
 export async function addSaying(saying: string): Promise<void> {
     const sayingList = await downloadJson();
+    console.log("sayingList", sayingList);
     if (!sayingList) {
         return;
     }
 
     const newSayingList = modifyJson(sayingList, saying);
+    console.log("newSayingList", newSayingList);
     uploadJson(newSayingList);
 }
