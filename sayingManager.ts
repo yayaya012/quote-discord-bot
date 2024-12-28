@@ -40,9 +40,7 @@ async function uploadJson(data: SayingList): Promise<void> {
     const command = new PutObjectCommand({
         Bucket: BUCKET_NAME,
         Key: FILE_KEY,
-        // Body: JSON.stringify(data),
-        Body: data,
-        ContentType: "application/json",
+        Body: JSON.stringify(data),
     });
 
     console.log("data: ", data);
