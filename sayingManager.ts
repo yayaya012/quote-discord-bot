@@ -37,13 +37,17 @@ function modifyJson(data: SayingList, newSaying: string): SayingList {
 }
 
 async function uploadJson(data: SayingList): Promise<void> {
-    const command = new PutObjectCommand({
-        Bucket: BUCKET_NAME,
-        Key: FILE_KEY,
-        Body: JSON.stringify(data),
-        ContentType: "application/json",
-    });
-    await s3Client.send(command);
+    try {
+        const command = new PutObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: FILE_KEY,
+            Body: JSON.stringify(data),
+            ContentType: "application/json",
+        });
+        await s3Client.send(command);
+    } catch (e) {
+        console.log(e);
+    }
 }
 
 export async function addSaying(saying: string): Promise<void> {
@@ -55,5 +59,5 @@ export async function addSaying(saying: string): Promise<void> {
 
     const newSayingList = modifyJson(sayingList, saying);
     console.log("newSayingList", newSayingList);
-    uploadJson(newSayingList);
+    await uploadJson(newSayingList);
 }
