@@ -43,7 +43,9 @@ async function uploadJson(data: SayingList): Promise<void> {
         Body: JSON.stringify(data),
         ContentType: "application/json",
     });
-    await s3Client.send(command);
+
+    const result = await s3Client.send(command);
+    console.log("PutObject response:", result);
 }
 
 export async function addSaying(saying: string): Promise<void> {
