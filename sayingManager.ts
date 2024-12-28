@@ -1,4 +1,4 @@
-import { S3Client, GetObjectCommand, PutObjectCommand } from "npm:@aws-sdk/client-s3@3.616.0";
+import { S3Client, GetObjectCommand, PutObjectCommand } from "npm:@aws-sdk/client-s3@latest";
 import "$std/dotenv/load.ts";
 
 // S3クライアントの設定
