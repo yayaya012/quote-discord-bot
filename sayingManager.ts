@@ -40,13 +40,13 @@ async function uploadJson(data: SayingList): Promise<void> {
     const command = new PutObjectCommand({
         Bucket: BUCKET_NAME,
         Key: FILE_KEY,
-        Body: JSON.stringify(data),
+        // Body: JSON.stringify(data),
+        Body: data,
         ContentType: "application/json",
     });
 
     console.log("data: ", data);
     console.log("JSON.stringify: ", JSON.stringify(data));
-    console.log("JSON.parse: ", JSON.parse(data));
     const result = await s3Client.send(command);
     console.log("PutObject response:", result);
 }
