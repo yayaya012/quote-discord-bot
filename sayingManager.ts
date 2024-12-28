@@ -54,6 +54,10 @@ export async function addSaying(saying: string): Promise<void> {
     }
 
     const newSayingList = modifyJson(sayingList, saying);
-    console.log("newSayingList", newSayingList);
-    await uploadJson(newSayingList);
+    try {
+        await uploadJson(newSayingList);
+        console.log("newSayingList", newSayingList);
+    } catch (err) {
+        console.error("uploadJson failed:", err);
+    }
 }
