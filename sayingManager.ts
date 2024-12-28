@@ -1,4 +1,4 @@
-import { S3Client, GetObjectCommand, PutObjectCommand } from "npm:@aws-sdk/client-s3@3.616.0";
+import { S3Client, GetObjectCommand, PutObjectCommand, GetObjectCommandOutput } from "npm:@aws-sdk/client-s3@3.616.0";
 import "$std/dotenv/load.ts";
 
 // S3クライアントの設定
@@ -20,7 +20,7 @@ interface SayingList {
 
 export async function downloadJson(): Promise<SayingList | undefined> {
     const command = new GetObjectCommand({ Bucket: BUCKET_NAME, Key: FILE_KEY });
-    const response = await s3Client.send(command);
+    const response = (await s3Client.send(command)) as GetObjectCommandOutput;
     const bodyStrings = (await response.Body?.transformToString("utf-8"))?.split("\n");
     if (!bodyStrings) {
         return undefined;
@@ -41,10 +41,10 @@ async function uploadJson(data: SayingList): Promise<void> {
         Bucket: BUCKET_NAME,
         Key: FILE_KEY,
         Body: JSON.stringify(data),
+        ContentType: "application/json",
     });
 
-    console.log("data: ", data);
-    console.log("JSON.stringify: ", JSON.stringify(data));
+    console.log("before s3Client.send()");
     const result = await s3Client.send(command);
     console.log("PutObject response:", result);
 }
@@ -55,12 +55,6 @@ export async function addSaying(saying: string): Promise<void> {
         return;
     }
     console.log("sayingList", sayingList);
-
-    try {
-        const newSayingList = modifyJson(sayingList, saying);
-        await uploadJson(newSayingList);
-        console.log("newSayingList", newSayingList);
-    } catch (err) {
-        console.error("uploadJson failed:", err);
-    }
+    const newSayingList = modifyJson(sayingList, saying);
+    await uploadJson(newSayingList);
 }

@@ -10,6 +10,11 @@ import {
     ApplicationCommandOptionTypes,
 } from "@discordeno/mod.ts";
 import { addSaying, downloadJson } from "./sayingManager.ts";
+import { type FetchEvent } from "https://deno.land/x/shed@v0.1.0-pre.10/middleware.ts";
+
+// =========================
+// (1) Discordeno ボットの設定
+// =========================
 
 interface SlashCommand {
     info: CreateSlashApplicationCommand;
@@ -21,6 +26,9 @@ const channelId: string = Deno.env.get("CHANNEL_ID")!;
 
 const botId = getBotIdFromToken(botToken);
 
+// =============================
+// cronスケジュールの設定
+// =============================
 Deno.cron("Continuous Request", "*/2 * * * *", () => {
     console.log("running...");
 });
@@ -28,10 +36,9 @@ Deno.cron("Continuous Request", "*/2 * * * *", () => {
 Deno.cron("send saying schedule", "0 3 * * SUN,MON,WED,FRI", async () => {
     const sayingList = await downloadJson();
     if (!sayingList) {
-        return undefined;
+        return;
     }
-
-    const random = Math.floor(Math.random() * (sayingList.length - 0));
+    const random = Math.floor(Math.random() * sayingList.length);
     bot.helpers.sendMessage(channelId, { content: sayingList.saying[random] });
 });
 
@@ -50,8 +57,6 @@ const addCommand: SlashCommand = {
     },
     response: async (bot, interaction) => {
         const saying = interaction.data?.options?.find((option) => option.name === "saying")?.value;
-        console.log("saying", saying);
-
         if (saying) {
             await addSaying(saying.toString());
             return await bot.helpers.sendInteractionResponse(interaction.id, interaction.token, {
@@ -62,7 +67,6 @@ const addCommand: SlashCommand = {
                 },
             });
         }
-
         return await bot.helpers.sendInteractionResponse(interaction.id, interaction.token, {
             type: InteractionResponseTypes.ChannelMessageWithSource,
             data: {
@@ -80,7 +84,6 @@ const registeredCountCommand: SlashCommand = {
     },
     response: async (bot, interaction) => {
         const sayingList = await downloadJson();
-
         return await bot.helpers.sendInteractionResponse(interaction.id, interaction.token, {
             type: InteractionResponseTypes.ChannelMessageWithSource,
             data: {
@@ -91,7 +94,7 @@ const registeredCountCommand: SlashCommand = {
     },
 };
 
-// ボットの作成
+// Discordeno ボットを作成 & 起動
 const bot = createBot({
     token: botToken,
     botId: botId as bigint,
@@ -102,7 +105,6 @@ const bot = createBot({
         },
         interactionCreate: async (_bot, interaction) => {
             if (!interaction.data?.name) return;
-
             switch (interaction.data.name) {
                 case addCommand.info.name:
                     await addCommand.response(bot, interaction);
@@ -118,11 +120,47 @@ const bot = createBot({
     },
 });
 
-// コマンドの作成
 bot.helpers.createGlobalApplicationCommand(addCommand.info);
 bot.helpers.createGlobalApplicationCommand(registeredCountCommand.info);
-
-// コマンドの登録
 bot.helpers.upsertGlobalApplicationCommands([addCommand.info, registeredCountCommand.info]);
 
 await startBot(bot);
+
+// ============================
+// fetchイベントで waitUntil
+// ============================
+addEventListener("fetch", (event: FetchEvent) => {
+    event.respondWith(handleFetch(event));
+});
+
+/**
+ * /add-saying?text=... というHTTPアクセスがあったときに
+ * レスポンス返却後も S3アップロードを裏で続けたい例
+ */
+async function handleFetch(event: FetchEvent): Promise<Response> {
+    const url = new URL(event.request.url);
+
+    // 例: /add-saying?text=XXX
+    if (url.pathname === "/add-saying") {
+        const text = url.searchParams.get("text") || "Default saying";
+
+        // レスポンスはすぐ返す
+        const response = new Response(`OK! We'll add saying: ${text}`, { status: 200 });
+
+        // レスポンス返却後も続行したい処理を waitUntil
+        event.waitUntil(
+            (async () => {
+                await addSaying(text);
+                console.log("Finished addSaying in the background");
+            })()
+        );
+
+        return await Promise.resolve(response);
+    }
+
+    // デフォルト応答
+    return new Response("Hello from Deno Deploy + Discordeno + waitUntil!", {
+        status: 200,
+        headers: { "content-type": "text/plain" },
+    });
+}
