@@ -53,8 +53,8 @@ export async function addSaying(saying: string): Promise<void> {
         return;
     }
 
-    const newSayingList = modifyJson(sayingList, saying);
     try {
+        const newSayingList = modifyJson(sayingList, saying);
         await uploadJson(newSayingList);
         console.log("newSayingList", newSayingList);
     } catch (err) {

@@ -19,12 +19,6 @@ interface SlashCommand {
 const botToken: string = Deno.env.get("BOT_TOKEN")!;
 const channelId: string = Deno.env.get("CHANNEL_ID")!;
 
-console.log(Deno.env.get("CHANNEL_ID")!);
-console.log(Deno.env.get("AWS_ACCESS_KEY_ID")!);
-console.log(Deno.env.get("AWS_SECRET_ACCESS_KEY")!);
-console.log(Deno.env.get("BUCKET_NAME")!);
-console.log(Deno.env.get("BOT_TOKEN")!);
-
 const botId = getBotIdFromToken(botToken);
 
 Deno.cron("Continuous Request", "*/2 * * * *", () => {
