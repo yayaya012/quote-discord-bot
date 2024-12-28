@@ -20,6 +20,20 @@ const botToken: string = Deno.env.get("BOT_TOKEN")!;
 const channelId: string = Deno.env.get("CHANNEL_ID")!;
 const botId = getBotIdFromToken(botToken);
 
+Deno.cron("Continuous Request", "*/2 * * * *", () => {
+    console.log("running...");
+});
+
+Deno.cron("send saying schedule", "0 3 * * SUN,MON,WED,FRI", async () => {
+    const sayingList = await downloadJson();
+    if (!sayingList) {
+        return undefined;
+    }
+
+    const random = Math.floor(Math.random() * (sayingList.length - 0));
+    bot.helpers.sendMessage(channelId, { content: sayingList.saying[random] });
+});
+
 const addCommand: SlashCommand = {
     info: {
         name: "add_saying",
@@ -39,7 +53,7 @@ const addCommand: SlashCommand = {
             // ここで、ローカル(またはデプロイURL)へ HTTP リクエストを飛ばす
             // 例: "https://<your-deno-deploy>.deno.dev/add-saying"
             const targetUrl = `${Deno.env.get("BASE_URL")!}/add-saying?text=${encodeURIComponent(saying.toString())}`;
-
+            console.log(targetUrl);
             try {
                 // Slash Command中で fetch してもOK
                 await fetch(targetUrl, { method: "GET" });
@@ -121,20 +135,6 @@ bot.helpers.createGlobalApplicationCommand(registeredCountCommand.info);
 bot.helpers.upsertGlobalApplicationCommands([addCommand.info, registeredCountCommand.info]);
 
 await startBot(bot);
-
-Deno.cron("Continuous Request", "*/2 * * * *", () => {
-    console.log("running...");
-});
-
-Deno.cron("send saying schedule", "0 3 * * SUN,MON,WED,FRI", async () => {
-    const sayingList = await downloadJson();
-    if (!sayingList) {
-        return undefined;
-    }
-
-    const random = Math.floor(Math.random() * (sayingList.length - 0));
-    bot.helpers.sendMessage(channelId, { content: sayingList.saying[random] });
-});
 
 // ============================
 // fetchイベントで waitUntil
