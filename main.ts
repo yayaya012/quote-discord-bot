@@ -35,14 +35,24 @@ const addCommand: SlashCommand = {
     },
     response: async (bot, interaction) => {
         const saying = interaction.data?.options?.find((option) => option.name === "saying")?.value;
-        console.log("saying", saying);
-
         if (saying) {
-            await addSaying(saying.toString());
+            // ここで、ローカル(またはデプロイURL)へ HTTP リクエストを飛ばす
+            // 例: "https://<your-deno-deploy>.deno.dev/add-saying"
+            const targetUrl = `${Deno.env.get("BASE_URL")!}/add-saying?text=${encodeURIComponent(saying.toString())}`;
+
+            try {
+                // Slash Command中で fetch してもOK
+                await fetch(targetUrl, { method: "GET" });
+                console.log("Dispatched /add-saying request in background");
+            } catch (err) {
+                console.error("Failed to dispatch /add-saying request:", err);
+            }
+
+            // Slash Commandへの応答はすぐ返す
             return await bot.helpers.sendInteractionResponse(interaction.id, interaction.token, {
                 type: InteractionResponseTypes.ChannelMessageWithSource,
                 data: {
-                    content: `新しい名言が追加されました: ${saying}`,
+                    content: `新しい名言を追加しました（バックグラウンド処理中）: ${saying}`,
                     flags: 1 << 6,
                 },
             });
