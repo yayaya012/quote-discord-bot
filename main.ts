@@ -50,23 +50,11 @@ const addCommand: SlashCommand = {
     response: async (bot, interaction) => {
         const saying = interaction.data?.options?.find((option) => option.name === "saying")?.value;
         if (saying) {
-            // ここで、ローカル(またはデプロイURL)へ HTTP リクエストを飛ばす
-            // 例: "https://<your-deno-deploy>.deno.dev/add-saying"
-            const targetUrl = `${Deno.env.get("BASE_URL")!}/add-saying?text=${encodeURIComponent(saying.toString())}`;
-            console.log(targetUrl);
-            try {
-                // Slash Command中で fetch してもOK
-                await fetch(targetUrl, { method: "GET" });
-                console.log("Dispatched /add-saying request in background");
-            } catch (err) {
-                console.error("Failed to dispatch /add-saying request:", err);
-            }
-
-            // Slash Commandへの応答はすぐ返す
+            await addSaying(saying.toString());
             return await bot.helpers.sendInteractionResponse(interaction.id, interaction.token, {
                 type: InteractionResponseTypes.ChannelMessageWithSource,
                 data: {
-                    content: `新しい名言を追加しました（バックグラウンド処理中）: ${saying}`,
+                    content: `新しい名言が追加されました: ${saying}`,
                     flags: 1 << 6,
                 },
             });
@@ -135,42 +123,3 @@ bot.helpers.createGlobalApplicationCommand(registeredCountCommand.info);
 bot.helpers.upsertGlobalApplicationCommands([addCommand.info, registeredCountCommand.info]);
 
 await startBot(bot);
-
-// ============================
-// fetchイベントで waitUntil
-// ============================
-addEventListener("fetch", (event: FetchEvent) => {
-    event.respondWith(handleFetch(event));
-});
-
-/**
- * /add-saying?text=... というHTTPアクセスがあったときに
- * レスポンス返却後も S3アップロードを裏で続けたい例
- */
-async function handleFetch(event: FetchEvent): Promise<Response> {
-    const url = new URL(event.request.url);
-
-    // 例: /add-saying?text=XXX
-    if (url.pathname === "/add-saying") {
-        const text = url.searchParams.get("text") || "Default saying";
-
-        // レスポンスはすぐ返す
-        const response = new Response(`OK! We'll add saying: ${text}`, { status: 200 });
-
-        // レスポンス返却後も続行したい処理を waitUntil
-        event.waitUntil(
-            (async () => {
-                await addSaying(text);
-                console.log("Finished addSaying in the background");
-            })()
-        );
-
-        return await Promise.resolve(response);
-    }
-
-    // デフォルト応答
-    return new Response("Hello from Deno Deploy + Discordeno + waitUntil!", {
-        status: 200,
-        headers: { "content-type": "text/plain" },
-    });
-}
