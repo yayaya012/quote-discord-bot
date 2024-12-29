@@ -1,17 +1,19 @@
-import { S3Client, GetObjectCommand, PutObjectCommand } from "npm:@aws-sdk/client-s3@latest";
+// import { S3Client, GetObjectCommand, PutObjectCommand } from "npm:@aws-sdk/client-s3@latest";
+import { S3, S3Bucket } from "https://deno.land/x/s3@0.5.0/mod.ts";
 import "$std/dotenv/load.ts";
+import { encoder } from "https://deno.land/x/s3@0.5.0/src/request.ts";
 
 // S3クライアントの設定
-const s3Client = new S3Client({
+const s3 = new S3({
     region: "ap-northeast-1",
-    credentials: {
-        accessKeyId: Deno.env.get("AWS_ACCESS_KEY_ID")!,
-        secretAccessKey: Deno.env.get("AWS_SECRET_ACCESS_KEY")!,
-    },
+    accessKeyID: Deno.env.get("AWS_ACCESS_KEY_ID")!,
+    secretKey: Deno.env.get("AWS_SECRET_ACCESS_KEY")!,
 });
 
-const BUCKET_NAME = Deno.env.get("BUCKET_NAME")!;
+// const BUCKET_NAME = Deno.env.get("BUCKET_NAME")!;
 const FILE_KEY = "sayingList.json";
+
+const bucket = s3.getBucket(Deno.env.get("BUCKET_NAME")!);
 
 interface SayingList {
     length: number;
@@ -19,13 +21,10 @@ interface SayingList {
 }
 
 export async function downloadJson(): Promise<SayingList | undefined> {
-    const command = new GetObjectCommand({ Bucket: BUCKET_NAME, Key: FILE_KEY });
-    const response = await s3Client.send(command);
-    const bodyStrings = (await response.Body?.transformToString("utf-8"))?.split("\n");
-    if (!bodyStrings) {
-        return undefined;
-    }
-    const parsedData: SayingList = JSON.parse(bodyStrings[0]);
+    const { body } = await bucket.getObject(FILE_KEY);
+    const data = await new Response(body).text();
+    console.log("File 'test' contains:", data);
+    const parsedData: SayingList = JSON.parse(data);
 
     return parsedData;
 }
@@ -37,23 +36,13 @@ function modifyJson(data: SayingList, newSaying: string): SayingList {
 }
 
 async function uploadJson(data: SayingList): Promise<void> {
-    const command = new PutObjectCommand({
-        Bucket: BUCKET_NAME,
-        Key: FILE_KEY,
-        Body: JSON.stringify(data),
-        ContentType: "application/json",
+    await bucket.putObject(FILE_KEY, encoder.encode(JSON.stringify(data)), {
+        contentType: "application/json",
     });
-    try {
-        const response = await s3Client.send(command);
-        console.log(response);
-    } catch (error) {
-        console.error(error);
-    }
 }
 
 export async function addSaying(saying: string): Promise<void> {
     const sayingList = await downloadJson();
-    console.log("sayingList", sayingList);
     if (!sayingList) {
         return;
     }
