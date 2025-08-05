@@ -34,6 +34,18 @@ Deno.cron("send saying schedule", "0 3 * * SUN,MON,WED,FRI", async () => {
     bot.helpers.sendMessage(channelId, { content: sayingList.saying[random] });
 });
 
+async function sendSayingOnce() {
+    const sayingList = await downloadJson();
+    if (!sayingList || !sayingList.length) {
+        console.log("[sendSayingOnce] sayingList が空・取得失敗");
+        return;
+    }
+
+    console.log("[sendSayingOnce] テスト送信 length: ", sayingList.length);
+    console.log("[sendSayingOnce] テスト送信 0件目: ", sayingList.saying[0]);
+    console.log("[sendSayingOnce] テスト送信 最大値: ", sayingList.saying[sayingList.length - 1]);
+}
+
 const addCommand: SlashCommand = {
     info: {
         name: "add_saying",
@@ -94,8 +106,11 @@ const bot = createBot({
     botId: botId as bigint,
     intents: Intents.Guilds | Intents.GuildMessages,
     events: {
-        ready: (_bot, payload) => {
+        ready: async (_bot, payload) => {
             console.log(`${payload.user.username} is ready!`);
+            if (Deno.args.includes("--run-once")) {
+                await sendSayingOnce();
+            }
         },
         interactionCreate: async (_bot, interaction) => {
             if (!interaction.data?.name) return;

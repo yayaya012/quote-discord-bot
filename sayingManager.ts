@@ -1,5 +1,5 @@
 // import { S3Client, GetObjectCommand, PutObjectCommand } from "npm:@aws-sdk/client-s3@latest";
-import { S3, S3Bucket } from "https://deno.land/x/s3@0.5.0/mod.ts";
+import { S3 } from "https://deno.land/x/s3@0.5.0/mod.ts";
 import "$std/dotenv/load.ts";
 import { encoder } from "https://deno.land/x/s3@0.5.0/src/request.ts";
 
@@ -21,8 +21,13 @@ interface SayingList {
 }
 
 export async function downloadJson(): Promise<SayingList | undefined> {
-    const { body } = await bucket.getObject(FILE_KEY);
-    const data = await new Response(body).text();
+    const body = await bucket.getObject(FILE_KEY);
+
+    if (!body) {
+        return;
+    }
+
+    const data = await new Response(body.body).text();
     console.log("File 'test' contains:", data);
     const parsedData: SayingList = JSON.parse(data);
 
