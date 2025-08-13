@@ -63,6 +63,7 @@ function inferExt(contentType?: string, fallback = "bin"): string {
         "image/jpeg": "jpg",
         "image/gif": "gif",
         "image/webp": "webp",
+        "image/heic": "heic",
     };
     return map[contentType] ?? fallback;
 }
