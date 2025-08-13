@@ -9,7 +9,7 @@ import {
     InteractionResponseTypes,
     ApplicationCommandOptionTypes,
 } from "@discordeno/mod.ts";
-import { addSaying, downloadJson } from "./sayingManager.ts";
+import { addSaying, downloadJson, getImage } from "./sayingManager.ts";
 
 interface SlashCommand {
     info: CreateSlashApplicationCommand;
@@ -25,60 +25,144 @@ Deno.cron("Continuous Request", "*/2 * * * *", () => {
 });
 
 Deno.cron("send saying schedule", "0 3 * * SUN,MON,WED,FRI", async () => {
-    const sayingList = await downloadJson();
-    if (!sayingList) {
-        return undefined;
-    }
+    const list = await downloadJson();
+    if (!list?.items?.length) return;
 
-    const random = Math.floor(Math.random() * (sayingList.length - 0));
-    bot.helpers.sendMessage(channelId, { content: sayingList.saying[random] });
-});
+    const random = Math.floor(Math.random() * list.items.length);
+    const item = list.items[random];
 
-async function sendSayingOnce() {
-    const sayingList = await downloadJson();
-    if (!sayingList || !sayingList.length) {
-        console.log("[sendSayingOnce] sayingList が空・取得失敗");
+    if (!item.imageKey) {
+        await bot.helpers.sendMessage(channelId, { content: item.text });
         return;
     }
 
-    console.log("[sendSayingOnce] テスト送信 length: ", sayingList.length);
-    console.log("[sendSayingOnce] テスト送信 0件目: ", sayingList.saying[0]);
-    console.log("[sendSayingOnce] テスト送信 最大値: ", sayingList.saying[sayingList.length - 1]);
+    const obj = await getImage(item.imageKey);
+    if (!obj?.body) {
+        await bot.helpers.sendMessage(channelId, { content: item.text });
+        return;
+    }
+
+    const bytes = new Uint8Array(await new Response(obj.body).arrayBuffer());
+    await bot.helpers.sendMessage(channelId, {
+        content: item.text,
+        file: [{ name: item.imageKey.split("/").pop() ?? "image", blob: new Blob([bytes]) }],
+    });
+});
+
+// テスト送信
+Deno.cron("debug send saying every minute", "* * * * *", async () => {
+    const list = await downloadJson();
+    if (!list?.items?.length) return;
+
+    const random = Math.floor(Math.random() * list.items.length);
+    const item = list.items[random];
+
+    if (!item.imageKey) {
+        await bot.helpers.sendMessage(channelId, { content: item.text });
+        return;
+    }
+
+    const obj = await getImage(item.imageKey);
+    if (!obj?.body) {
+        await bot.helpers.sendMessage(channelId, { content: item.text });
+        return;
+    }
+
+    const bytes = new Uint8Array(await new Response(obj.body).arrayBuffer());
+    await bot.helpers.sendMessage(channelId, {
+        content: item.text,
+        file: [{ name: item.imageKey.split("/").pop() ?? "image", blob: new Blob([bytes]) }],
+    });
+});
+
+async function sendSayingOnce() {
+    const list = await downloadJson();
+    if (!list?.items?.length) {
+        return;
+    }
+
+    console.log("[sendSayingOnce] length:", list.items.length);
+    console.log("[sendSayingOnce] 0:", list.items[0]);
+    console.log("[sendSayingOnce] last:", list.items[list.items.length - 1]);
 }
 
 const addCommand: SlashCommand = {
     info: {
-        name: "add_saying",
+        name: "add_saying_v2",
         description: "名言を追加します",
         options: [
             {
                 type: ApplicationCommandOptionTypes.String,
-                name: "saying",
+                name: "text",
                 description: "追加する名言",
                 required: true,
             },
+            {
+                type: ApplicationCommandOptionTypes.Attachment,
+                name: "image",
+                description: "画像ファイル（任意）",
+                required: false,
+            },
         ],
     },
+
     response: async (bot, interaction) => {
-        const saying = interaction.data?.options?.find((option) => option.name === "saying")?.value;
-        if (saying) {
-            await addSaying(saying.toString());
-            return await bot.helpers.sendInteractionResponse(interaction.id, interaction.token, {
+        const raw =
+            interaction.data?.options?.find((o) => o.name === "text")?.value ??
+            interaction.data?.options?.find((o) => o.name === "saying")?.value ??
+            "";
+        const text = String(raw).trim();
+        if (!text) {
+            await bot.helpers.sendInteractionResponse(interaction.id, interaction.token, {
                 type: InteractionResponseTypes.ChannelMessageWithSource,
-                data: {
-                    content: `新しい名言が追加されました: ${saying}`,
-                    flags: 1 << 6,
-                },
+                data: { content: `名言が指定されていません。`, flags: 1 << 6 },
+            });
+            return;
+        }
+
+        const attachId = interaction.data?.options?.find((o) => o.name === "image")?.value?.toString();
+
+        type AttachmentLike = { url: string; filename: string; content_type?: string };
+
+        function isMapLike<T>(x: unknown): x is { get: (k: bigint) => T | undefined; keys?: () => Iterable<bigint> } {
+            return typeof x === "object" && x !== null && typeof (x as { get?: unknown }).get === "function";
+        }
+        function isDictLike<T>(x: unknown): x is Record<string, T> {
+            return typeof x === "object" && x !== null && !isMapLike<T>(x);
+        }
+
+        const resolved = (interaction.data as { resolved?: { attachments?: unknown } } | undefined)?.resolved;
+        const atts = resolved?.attachments;
+
+        let attachment: AttachmentLike | undefined;
+        if (attachId && atts) {
+            if (isMapLike<AttachmentLike>(atts)) {
+                attachment = atts.get(BigInt(attachId));
+            } else if (isDictLike<AttachmentLike>(atts)) {
+                attachment = atts[attachId];
+            }
+        }
+
+        if (!attachment) {
+            await addSaying(text);
+        } else {
+            const res = await fetch(attachment.url);
+            const buf = new Uint8Array(await res.arrayBuffer());
+            await addSaying(text, {
+                bytes: buf,
+                filename: attachment.filename,
+                contentType: res.headers.get("content-type") ?? attachment.content_type ?? undefined,
             });
         }
 
-        return await bot.helpers.sendInteractionResponse(interaction.id, interaction.token, {
-            type: InteractionResponseTypes.ChannelMessageWithSource,
-            data: {
-                content: "名言が指定されていません。",
-                flags: 1 << 6,
-            },
-        });
+        try {
+            await bot.helpers.sendInteractionResponse(interaction.id, interaction.token, {
+                type: InteractionResponseTypes.ChannelMessageWithSource,
+                data: { content: `新しい名言が追加されました: ${text}`, flags: 1 << 6 },
+            });
+        } catch (e) {
+            console.error(`sendInteractionResponse failed`, e);
+        }
     },
 };
 
@@ -88,12 +172,13 @@ const registeredCountCommand: SlashCommand = {
         description: "登録済みの名言の数を応答します",
     },
     response: async (bot, interaction) => {
-        const sayingList = await downloadJson();
+        const list = await downloadJson();
+        const count = list?.items?.length ?? 0;
 
         return await bot.helpers.sendInteractionResponse(interaction.id, interaction.token, {
             type: InteractionResponseTypes.ChannelMessageWithSource,
             data: {
-                content: sayingList ? `${sayingList.length}件の名言が登録されています` : "名言が登録されていません",
+                content: list ? `${count}件の名言が登録されています` : "名言が登録されていません",
                 flags: 1 << 6,
             },
         });
