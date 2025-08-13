@@ -49,32 +49,6 @@ Deno.cron("send saying schedule", "0 3 * * SUN,MON,WED,FRI", async () => {
     });
 });
 
-// テスト送信
-Deno.cron("debug send saying every minute", "* * * * *", async () => {
-    const list = await downloadJson();
-    if (!list?.items?.length) return;
-
-    const random = Math.floor(Math.random() * list.items.length);
-    const item = list.items[random];
-
-    if (!item.imageKey) {
-        await bot.helpers.sendMessage(channelId, { content: item.text });
-        return;
-    }
-
-    const obj = await getImage(item.imageKey);
-    if (!obj?.body) {
-        await bot.helpers.sendMessage(channelId, { content: item.text });
-        return;
-    }
-
-    const bytes = new Uint8Array(await new Response(obj.body).arrayBuffer());
-    await bot.helpers.sendMessage(channelId, {
-        content: item.text,
-        file: [{ name: item.imageKey.split("/").pop() ?? "image", blob: new Blob([bytes]) }],
-    });
-});
-
 async function sendSayingOnce() {
     const list = await downloadJson();
     if (!list?.items?.length) {
