@@ -88,7 +88,7 @@ async function sendSayingOnce() {
 
 const addCommand: SlashCommand = {
     info: {
-        name: "add_saying_v2",
+        name: "add_saying",
         description: "名言を追加します",
         options: [
             {
