@@ -9,7 +9,7 @@ import {
     InteractionResponseTypes,
     ApplicationCommandOptionTypes,
 } from "@discordeno/mod.ts";
-import { addSaying, downloadJson, getImage } from "./sayingManager.ts";
+import { addSaying, downloadJson, getImage, saveSayingList } from "./sayingManager.ts";
 
 interface SlashCommand {
     info: CreateSlashApplicationCommand;
@@ -28,26 +28,83 @@ Deno.cron("send saying schedule", "0 3 * * SUN,MON,WED,FRI", async () => {
     const list = await downloadJson();
     if (!list?.items?.length) return;
 
-    const random = Math.floor(Math.random() * list.items.length);
-    const item = list.items[random];
+    // まず全アイテムの coolDown をデクリメント（0未満にならない）
+    for (const it of list.items) {
+        if (typeof it.coolDown !== "number") it.coolDown = 0;
+        if (it.coolDown > 0) it.coolDown = Math.max(0, it.coolDown - 1);
+    }
 
+    // 抽選対象を抽出
+    let candidates = list.items.filter((it) => (it.coolDown ?? 0) === 0);
+
+    // もし候補が無ければもう一度デクリメントして回復を試みる
+    if (candidates.length === 0) {
+        for (const it of list.items) {
+            if ((it.coolDown ?? 0) > 0) it.coolDown = Math.max(0, (it.coolDown || 0) - 1);
+        }
+        candidates = list.items.filter((it) => (it.coolDown ?? 0) === 0);
+    }
+
+    // それでも無ければ全件開放（安全弁）
+    if (candidates.length === 0) {
+        for (const it of list.items) it.coolDown = 0;
+        candidates = list.items;
+    }
+
+    const random = Math.floor(Math.random() * candidates.length);
+    const item = candidates[random];
+
+    // 投稿処理（早期returnしない）
+    let sent = false;
     if (!item.imageKey) {
         await bot.helpers.sendMessage(channelId, { content: item.text });
-        return;
+        sent = true;
+    } else {
+        const obj = await getImage(item.imageKey);
+        if (!obj?.body) {
+            await bot.helpers.sendMessage(channelId, { content: item.text });
+            sent = true;
+        } else {
+            const bytes = new Uint8Array(await new Response(obj.body).arrayBuffer());
+            await bot.helpers.sendMessage(channelId, {
+                content: item.text,
+                file: [{ name: item.imageKey.split("/").pop() ?? "image", blob: new Blob([bytes]) }],
+            });
+            sent = true;
+        }
     }
 
-    const obj = await getImage(item.imageKey);
-    if (!obj?.body) {
-        await bot.helpers.sendMessage(channelId, { content: item.text });
-        return;
+    if (sent) {
+        item.coolDown = 3;
+        await saveSayingList(list);
     }
-
-    const bytes = new Uint8Array(await new Response(obj.body).arrayBuffer());
-    await bot.helpers.sendMessage(channelId, {
-        content: item.text,
-        file: [{ name: item.imageKey.split("/").pop() ?? "image", blob: new Blob([bytes]) }],
-    });
 });
+
+// １分ごとに送信するテスト(push禁止)
+// Deno.cron("debug send saying every minute", "* * * * *", async () => {
+//     const list = await downloadJson();
+//     if (!list?.items?.length) return;
+
+//     const random = Math.floor(Math.random() * list.items.length);
+//     const item = list.items[random];
+
+//     if (!item.imageKey) {
+//         await bot.helpers.sendMessage(channelId, { content: item.text });
+//         return;
+//     }
+
+//     const obj = await getImage(item.imageKey);
+//     if (!obj?.body) {
+//         await bot.helpers.sendMessage(channelId, { content: item.text });
+//         return;
+//     }
+
+//     const bytes = new Uint8Array(await new Response(obj.body).arrayBuffer());
+//     await bot.helpers.sendMessage(channelId, {
+//         content: item.text,
+//         file: [{ name: item.imageKey.split("/").pop() ?? "image", blob: new Blob([bytes]) }],
+//     });
+// });
 
 async function sendSayingOnce() {
     const list = await downloadJson();

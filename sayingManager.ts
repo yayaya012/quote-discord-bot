@@ -17,6 +17,8 @@ const bucket = s3.getBucket(Deno.env.get("BUCKET_NAME")!);
 interface SayingItem {
     text: string;
     imageKey?: string;
+    /** 0 のときのみ抽選対象。投稿したら 3 にセット、以後 1 ずつデクリメント */
+    coolDown?: number;
 }
 interface SayingList {
     items: SayingItem[];
@@ -27,17 +29,33 @@ export async function downloadJson(): Promise<SayingList | undefined> {
     if (!body) return;
 
     const text = await new Response(body.body).text();
-    const parsed = JSON.parse(text);
+    const parsed: SayingList = JSON.parse(text);
 
     if (!parsed || !Array.isArray(parsed.items)) {
         console.error("[downloadJson] invalid schema (items missing)");
         return;
     }
-    return parsed as SayingList;
+
+    // 既存データ互換: coolDown が無いアイテムは 0 に補完
+    const normalized: SayingList = {
+        items: parsed.items.map((it) => ({
+            text: String(it.text ?? ""),
+            imageKey: typeof it.imageKey === "string" ? it.imageKey : undefined,
+            coolDown: typeof it.coolDown === "number" ? it.coolDown : 0,
+        })),
+    };
+
+    return normalized;
 }
 
-async function uploadJson(data: SayingList): Promise<void> {
-    await bucket.putObject(FILE_KEY, encoder.encode(JSON.stringify(data)), { contentType: "application/json" });
+// async function uploadJson(data: SayingList): Promise<void> {
+//     await bucket.putObject(FILE_KEY, encoder.encode(JSON.stringify(data)), { contentType: "application/json" });
+// }
+
+export async function saveSayingList(data: SayingList): Promise<void> {
+    await bucket.putObject(FILE_KEY, encoder.encode(JSON.stringify(data)), {
+        contentType: "application/json",
+    });
 }
 
 export async function addSaying(
@@ -52,8 +70,10 @@ export async function addSaying(
         imageKey = await uploadImageToS3(image.bytes, image.filename, image.contentType);
     }
 
-    data.items.push({ text, imageKey });
-    await uploadJson(data);
+    // 新規はすぐ抽選対象にしたいので coolDown は 0 で追加
+    data.items.push({ text, imageKey, coolDown: 0 });
+
+    await saveSayingList(data);
 }
 
 function inferExt(contentType?: string, fallback = "bin"): string {
