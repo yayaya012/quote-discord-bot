@@ -20,6 +20,12 @@ const botToken: string = Deno.env.get("BOT_TOKEN")!;
 const channelId: string = Deno.env.get("CHANNEL_ID")!;
 const botId = getBotIdFromToken(botToken);
 
+// health-check用 cron
+Deno.cron("keep alive", "*/10 * * * *", async () => {
+    await fetch("https://example.com", { method: "HEAD" });
+    console.log("[keep-alive]", new Date().toISOString());
+});
+
 // 本番（曜日指定）
 Deno.cron("send saying schedule", "0 3 * * SUN,MON,WED,FRI", async () => {
     await pickSendAndCoolDownOnce();
