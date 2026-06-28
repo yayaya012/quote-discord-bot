@@ -25,11 +25,6 @@ Deno.cron("send saying schedule", "0 3 * * SUN,MON,WED,FRI", async () => {
     await pickSendAndCoolDownOnce();
 });
 
-// １分ごとテスト（push禁止）
-// Deno.cron("debug send saying every minute", "* * * * *", async () => {
-//     await pickSendAndCoolDownOnce();
-// });
-
 async function pickSendAndCoolDownOnce() {
     const list = await downloadJson();
     if (!list?.items?.length) return;
@@ -114,10 +109,7 @@ const addCommand: SlashCommand = {
     },
 
     response: async (bot, interaction) => {
-        const raw =
-            interaction.data?.options?.find((o) => o.name === "text")?.value ??
-            interaction.data?.options?.find((o) => o.name === "saying")?.value ??
-            "";
+        const raw = interaction.data?.options?.find((o) => o.name === "text")?.value ?? "";
         const text = String(raw).trim();
         if (!text) {
             await bot.helpers.sendInteractionResponse(interaction.id, interaction.token, {
