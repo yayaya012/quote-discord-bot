@@ -3,7 +3,7 @@
     "lock": false,
     // deno task startで実行
     "tasks": {
-        "start": "deno run --unstable-cron -A --watch ./main.ts",
+        "start": "deno run --unstable-cron -A ./main.ts",
         "test": "deno run --unstable-cron -A --watch ./main.ts -- --run-once"
     },
     "imports": {
